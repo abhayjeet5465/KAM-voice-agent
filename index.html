@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Virtual KAM · Seller voice assistant (mock demo)</title>
+<style>
+  :root {
+    --bg: #f5f3ee; --card: #ffffff; --ink: #1c1b19; --muted: #6f6b63; --line: #e4e0d6;
+    --accent: #e40046; --listen: #0a8f5b; --think: #c27a00; --speak: #e40046;
+    --down: #c0262d; --up-bad: #c0262d; --flat: #6f6b63;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, "Segoe UI", sans-serif; }
+  header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; padding: 18px 24px 0; max-width: 1180px; margin: 0 auto; }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: -.01em; }
+  header h1 span { color: var(--accent); }
+  .tag { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px; background: var(--card); }
+  main { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; padding: 16px 24px 32px; max-width: 1180px; margin: 0 auto; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 16px 16px 0; } }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+  .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .card h2 small { text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+  /* Call card: the orb shows the state at all times */
+  .call { display: flex; align-items: center; gap: 20px; }
+  .orb { flex: none; width: 92px; height: 92px; border-radius: 50%; border: 0; cursor: pointer; background: #cfcabd; transition: background .25s; position: relative; }
+  .orb::after { content: ""; position: absolute; inset: -8px; border-radius: 50%; border: 2px solid transparent; }
+  [data-state=listening] .orb { background: var(--listen); }
+  [data-state=listening] .orb::after { border-color: var(--listen); animation: ring 1.6s ease-out infinite; }
+  [data-state=thinking] .orb { background: var(--think); animation: breathe .9s ease-in-out infinite; }
+  [data-state=speaking] .orb { background: var(--speak); animation: talk .45s ease-in-out infinite alternate; }
+  @keyframes ring { from { transform: scale(.92); opacity: .9; } to { transform: scale(1.25); opacity: 0; } }
+  @keyframes breathe { 50% { transform: scale(.9); opacity: .7; } }
+  @keyframes talk { from { transform: scale(.96); } to { transform: scale(1.06); } }
+  @media (prefers-reduced-motion: reduce) { .orb, .orb::after { animation: none !important; } }
+  .status { flex: 1; min-width: 0; }
+  #stateLabel { font-size: 22px; font-weight: 650; letter-spacing: -.01em; }
+  #hint { color: var(--muted); font-size: 13px; }
+  #stage { display: inline-block; margin-top: 6px; font-size: 12px; color: var(--muted); }
+  button.main { font: inherit; font-weight: 600; border: 0; border-radius: 10px; padding: 11px 20px; cursor: pointer; background: var(--ink); color: #fff; }
+  [data-state]:not([data-state=idle]) button.main { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  button:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+  #notice { display: none; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #fff4e5; border: 1px solid #f0d3a4; font-size: 14px; }
+
+  #transcript { height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; }
+  .msg.kam { background: #f3efe6; align-self: flex-start; border-bottom-left-radius: 4px; }
+  .msg.seller { background: var(--ink); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+  .msg.interim { opacity: .55; }
+  .empty { color: var(--muted); font-size: 14px; }
+
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-size: 12px; color: var(--muted); font-weight: 500; }
+  tr:last-child td { border-bottom: 0; }
+  .bad { color: var(--down); font-weight: 600; } .flat { color: var(--flat); }
+  ul { margin: 0; padding-left: 18px; } li { margin: 2px 0; }
+  .assume { font-size: 14px; }
+  .assume p { margin: 0 0 4px; }
+  #actions { list-style: none; padding: 0; }
+  #actions li { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  #actions li:last-child { border-bottom: 0; }
+  #actions .tick { color: var(--listen); font-weight: 700; }
+  #actions .ref { margin-left: auto; font: 12px ui-monospace, Consolas, monospace; color: var(--muted); white-space: nowrap; }
+  #summary h3 { font-size: 14px; margin: 10px 0 2px; } #summary h3:first-child { margin-top: 0; }
+</style>
+</head>
+<body data-state="idle">
+<header>
+  <h1><span>●</span> Virtual KAM <span style="color:var(--muted);font-weight:400">· seller voice assistant</span></h1>
+  <span class="tag">Demo with mock data · not a real Snapdeal system</span>
+</header>
+
+<main>
+  <div class="col">
+    <section class="card">
+      <div class="call">
+        <button class="orb" id="orb" aria-label="Interrupt the assistant" title="Click to interrupt"></button>
+        <div class="status">
+          <div id="stateLabel" aria-live="polite">Ready</div>
+          <div id="hint">Click Start call, allow the microphone, then just talk. Headphones recommended.</div>
+          <span id="stage"></span>
+        </div>
+        <button class="main" id="callBtn">Start call</button>
+      </div>
+      <div id="notice" role="alert"></div>
+    </section>
+
+    <section class="card">
+      <h2>Live transcript</h2>
+      <div id="transcript"><div class="empty">Try: "My sales have dropped significantly this month. I don't understand why. Can you help me?"</div></div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card">
+      <h2>Seller account · <small id="storeName"></small></h2>
+      <table id="metrics"></table>
+    </section>
+    <section class="card assume">
+      <h2>Assumptions <small>(mock details I added, not in the brief)</small></h2>
+      <div id="assumptions"></div>
+    </section>
+    <section class="card">
+      <h2>Actions taken by the KAM <small>(mock, nothing real is changed)</small></h2>
+      <ul id="actions"><li class="empty">Actions the seller agrees to are logged here.</li></ul>
+    </section>
+    <section class="card">
+      <h2>Call summary</h2>
+      <div id="summary"><div class="empty">Shown when the call ends.</div></div>
+    </section>
+  </div>
+</main>
+
+<script>
+// ---------- Tunable knobs (voice needs tuning by ear) ----------
+const SILENCE_AFTER_FINAL_MS = 700;    // Chrome already detected a pause: wait a little more, then reply
+const SILENCE_AFTER_INTERIM_MS = 1600; // seller may be mid-sentence: wait longer so we don't cut them off
+const BARGE_IN_WORDS = 3;              // words heard that the bot did NOT say = the seller is interrupting
+const IDLE_MS = 20000;                 // silence before "are you still there?"
+const SPEECH_LANG = 'en-IN';
+
+const $ = (id) => document.getElementById(id);
+const API = '/api/groq';
+const post = (body, ms) => fetch(API, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body), signal: AbortSignal.timeout(ms),
+});
+const words = (t) => t.toLowerCase().match(/[a-z0-9]+/g) || [];
+const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+// ---------- State ----------
+let state = 'idle';        // idle | listening | thinking | speaking
+let active = false;        // is a call in progress
+let messages = [];         // conversation history sent to the model
+let failures = 0, nudges = 0;
+let naturalVoice = true;   // false after the Groq voice fails once -> browser voice for the rest of the call
+let speakId = 0;           // bumping this cancels whatever is being spoken
+let botWords = new Set();  // words of the sentence being spoken (to ignore our own echo)
+let silenceTimer, idleTimer;
+const audio = new Audio();
+
+const LABELS = { idle: 'Ready', listening: 'Listening…', thinking: 'Thinking…', speaking: 'Speaking…' };
+function setState(s) {
+  state = s;
+  document.body.dataset.state = s;
+  $('stateLabel').textContent = LABELS[s];
+  $('callBtn').textContent = s === 'idle' ? 'Start call' : 'End call';
+  clearTimeout(idleTimer);
+  if (s === 'listening') idleTimer = setTimeout(nudge, IDLE_MS);
+}
+function notice(text) { $('notice').textContent = text; $('notice').style.display = text ? 'block' : 'none'; }
+
+// ---------- Ears: Chrome speech recognition, always on during a call ----------
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec, carry = '', sessionText = '', skipIdx = 0, lastLen = 0;
+
+function forgetHeard() { // drop everything heard so far (used when a new turn starts)
+  carry = ''; sessionText = ''; skipIdx = lastLen; clearTimeout(silenceTimer);
+}
+
+function setupEars() {
+  rec = new SR();
+  rec.continuous = true; rec.interimResults = true; rec.lang = SPEECH_LANG;
+  rec.onresult = (e) => {
+    lastLen = e.results.length;
+    sessionText = Array.from(e.results).slice(skipIdx).map((r) => r[0].transcript).join(' ');
+    onHeard(e.results[lastLen - 1].isFinal);
+  };
+  rec.onerror = (e) => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      endCall(); notice('Microphone access was blocked. Click the lock icon in the address bar, allow the microphone, then start the call again.');
+    } else if (e.error === 'network') {
+      notice('Speech recognition lost its connection. Check your internet; I will keep trying.');
+    } // "no-speech" and "aborted" are normal: onend below simply restarts
+  };
+  rec.onend = () => { // Chrome stops recognition now and then; keep what was heard and restart
+    if (state === 'listening') carry = (carry + ' ' + sessionText).trim();
+    sessionText = ''; skipIdx = 0; lastLen = 0;
+    if (active) setTimeout(() => { try { rec.start(); } catch {} }, 150);
+  };
+}
+
+function onHeard(lastIsFinal) {
+  const text = (carry + ' ' + sessionText).trim();
+  if (state === 'speaking') {
+    // Barge-in: the mic also hears the bot. Only words the bot is NOT saying count as the seller.
+    if (words(text).filter((w) => !botWords.has(w)).length < BARGE_IN_WORDS) return;
+    stopSpeaking(); setState('listening');
+  }
+  if (state !== 'listening' || !text) return;
+  clearTimeout(idleTimer); notice('');
+  showInterim(text);
+  clearTimeout(silenceTimer);
+  silenceTimer = setTimeout(() => sellerTurn(text), lastIsFinal ? SILENCE_AFTER_FINAL_MS : SILENCE_AFTER_INTERIM_MS);
+}
+
+// ---------- Mouth: Groq Orpheus voice, falling back to the browser voice ----------
+function chunks(text) { // Orpheus takes 200 characters per request: group whole sentences
+  // ponytail: a single sentence over 200 chars is cut by the server; the prompt keeps sentences short
+  const out = [];
+  for (const s of text.match(/[^.!?]+[.!?]*\s*/g) || [text]) {
+    if (out.length && (out[out.length - 1] + s).length <= 200) out[out.length - 1] += s; else out.push(s);
+  }
+  return out;
+}
+
+async function playNatural(text, id) {
+  // fetch all audio first, so a failure happens before any sound and the fallback can say the whole thing
+  const blobs = await Promise.all(chunks(text).map(async (t) => {
+    const r = await post({ type: 'speech', text: t }, 6000);
+    if (!r.ok) throw new Error('voice ' + r.status);
+    return r.blob();
+  }));
+  for (const b of blobs) {
+    if (id !== speakId) return;
+    await new Promise((done, fail) => {
+      audio.src = URL.createObjectURL(b);
+      audio.onended = audio.onpause = done; audio.onerror = fail;
+      audio.play().catch(fail);
+    });
+  }
+}
+
+function playBrowser(text) {
+  return new Promise((done) => {
+    const u = new SpeechSynthesisUtterance(text);
+    const voices = speechSynthesis.getVoices();
+    u.voice = voices.find((v) => v.lang === 'en-IN') || voices.find((v) => v.lang.startsWith('en')) || null;
+    u.lang = 'en-IN'; u.onend = u.onerror = done;
+    speechSynthesis.speak(u);
+  });
+}
+
+function stopSpeaking() { speakId++; audio.pause(); speechSynthesis.cancel(); }
+
+// Speaks the text. Returns true if it finished, false if the seller interrupted.
+async function speak(text) {
+  const id = ++speakId;
+  botWords = new Set(words(text));
+  forgetHeard();
+  setState('speaking');
+  try {
+    if (!naturalVoice) throw 0;
+    await playNatural(text, id);
+  } catch {
+    naturalVoice = false; // ponytail: one failure disables the Groq voice for the whole call; retry per turn if that proves too strict
+    if (id === speakId) await playBrowser(text);
+  }
+  return id === speakId;
+}
+
+// ---------- Brain: one request per turn, the model answers with one JSON object ----------
+async function sellerTurn(text) {
+  if (state !== 'listening') return;
+  nudges = 0;
+  addMessage('seller', text);
+  messages.push({ role: 'user', content: text });
+  await respond();
+}
+
+async function respond() {
+  setState('thinking');
+  forgetHeard();
+  let turn;
+  try {
+    const r = await post({ type: 'chat', messages }, 15000);
+    if (!r.ok) throw new Error('chat ' + r.status);
+    const { reply } = await r.json();
+    try { turn = JSON.parse(reply); } catch { turn = { say: reply }; } // malformed JSON: just say the text
+    if (!turn.say) throw new Error('empty reply');
+    messages.push({ role: 'assistant', content: reply });
+    failures = 0; notice('');
+  } catch (e) {
+    failures++;
+    const firstTurn = messages.length === 1;
+    if (firstTurn || failures >= 2) {
+      notice('The assistant could not reach the AI service (it may be rate limited). Please wait a minute and start the call again.');
+      if (active) await speak('Sorry, I am having trouble connecting right now. Please try again in a minute.');
+      return endCall();
+    }
+    messages.pop(); // forget the turn that failed, the seller will repeat it
+    turn = { say: 'Sorry, I lost you for a moment. Could you say that again?' };
+  }
+  if (!active) return;
+
+  addMessage('kam', turn.say);
+  if (turn.stage) $('stage').textContent = 'Stage: ' + turn.stage;
+  (turn.actions || []).forEach(logAction);
+  if (turn.end_call && turn.summary) showSummary(turn.summary);
+
+  const finished = await speak(turn.say);
+  if (!active || !finished) return;          // interrupted: onHeard already switched to listening
+  if (turn.end_call) return endCall();
+  forgetHeard(); setState('listening');
+}
+
+async function nudge() { // the seller has been silent for a while
+  if (state !== 'listening') return;
+  if (++nudges >= 2) {
+    if (await speak('I will end the call here. You can call me back any time.')) endCall();
+    return;
+  }
+  if (await speak('Are you still there? Take your time.')) { forgetHeard(); setState('listening'); }
+}
+
+// ---------- Call control ----------
+function startCall() {
+  if (!SR) return;
+  active = true; messages = [{ role: 'user', content: '[call connected]' }];
+  failures = 0; nudges = 0; naturalVoice = true; loggedActions.clear();
+  $('transcript').innerHTML = ''; $('stage').textContent = ''; notice('');
+  $('actions').innerHTML = '<li class="empty">Actions the seller agrees to are logged here.</li>';
+  $('summary').innerHTML = '<div class="empty">Shown when the call ends.</div>';
+  try { rec.start(); } catch {}
+  respond(); // the bot greets first
+}
+function endCall() {
+  active = false; stopSpeaking(); clearTimeout(silenceTimer);
+  try { rec.abort(); } catch {}
+  setState('idle');
+}
+$('callBtn').onclick = () => (active ? endCall() : startCall());
+$('orb').onclick = () => { if (state === 'speaking') { stopSpeaking(); forgetHeard(); setState('listening'); } };
+
+// ---------- Screen ----------
+function addMessage(who, text) {
+  document.querySelector('#transcript .interim')?.remove();
+  const d = document.createElement('div');
+  d.className = 'msg ' + who; d.textContent = text;
+  $('transcript').append(d); $('transcript').scrollTop = 1e9;
+  return d;
+}
+function showInterim(text) { // live words while the seller is still talking
+  const d = document.querySelector('#transcript .interim') || addMessage('seller interim', '');
+  d.textContent = text; $('transcript').scrollTop = 1e9;
+}
+
+const ACTION_LABELS = {
+  restock_list: 'Restock list created', low_stock_alerts: 'Low-stock alerts switched on',
+  pause_listings: 'Zero-stock listings paused', dispatch_review: 'Dispatch review raised', follow_up: 'Follow-up call scheduled',
+};
+const loggedActions = new Set();
+function logAction(a) {
+  if (!ACTION_LABELS[a.type] || loggedActions.has(a.type)) return; // each action is logged once
+  if (!loggedActions.size) $('actions').innerHTML = '';
+  loggedActions.add(a.type);
+  const ref = 'MOCK-' + Math.floor(1000 + Math.random() * 9000);
+  $('actions').insertAdjacentHTML('beforeend',
+    `<li><span class="tick">✓</span><span><b>${ACTION_LABELS[a.type]}</b><br>${esc(a.detail)}</span><span class="ref">${ref}</span></li>`);
+}
+function showSummary(s) {
+  const part = (title, items) => `<h3>${title}</h3><ul>${(items || []).map((i) => `<li>${esc(i)}</li>`).join('')}</ul>`;
+  $('summary').innerHTML = part('Key issues', s.issues) + part('Recommendations', s.recommendations) + part('Next steps', s.next_steps);
+}
+
+const rs = (n) => 'Rs ' + n.toLocaleString('en-IN');
+async function showSeller() {
+  try {
+    const s = await (await fetch(API)).json();
+    const a = s.metrics.last_month, b = s.metrics.this_month, as = s.assumptions;
+    $('storeName').textContent = `${s.store} · ${s.category}`;
+    const row = (name, x, y, fmt) => {
+      const pct = ((y - x) / x) * 100;
+      const change = pct === 0 ? '<span class="flat">no change</span>' : `<span class="bad">${pct > 0 ? '+' : ''}${pct.toFixed(1)}%</span>`;
+      return `<tr><td>${name}</td><td>${fmt(x)}</td><td>${fmt(y)}</td><td>${change}</td></tr>`;
+    };
+    $('metrics').innerHTML = '<tr><th>Metric</th><th>Last month</th><th>This month</th><th>Change</th></tr>' +
+      row('Sales', a.sales_rs, b.sales_rs, rs) + row('Orders', a.orders, b.orders, String) +
+      row('Cancellation rate', a.cancellation_rate_pct, b.cancellation_rate_pct, (n) => n + '%') +
+      row('Average selling price', a.avg_selling_price_rs, b.avg_selling_price_rs, rs) +
+      row('Out-of-stock products', a.out_of_stock_products, b.out_of_stock_products, String);
+    const c = as.cancellations_this_month;
+    $('assumptions').innerHTML =
+      '<p><b>Top out-of-stock products</b> (orders last month)</p><ul>' +
+      as.top_out_of_stock_products.map((p) => `<li>${esc(p.name)}: ${p.orders_last_month}</li>`).join('') + '</ul>' +
+      `<p style="margin-top:8px"><b>Cancellations this month</b>: ${c.total} in total. No stock ${c.out_of_stock}, late dispatch ${c.late_dispatch}, buyer changed mind ${c.buyer_changed_mind}.</p>` +
+      `<p>${esc(as.restock_estimate)}</p>`;
+  } catch {
+    notice('Could not load the seller data. If you are running this locally, start it with "vercel dev" instead of opening the file directly.');
+  }
+}
+
+// ---------- Boot ----------
+if (SR) setupEars();
+else { notice('This demo needs Google Chrome or Microsoft Edge on a computer, because it uses the browser\'s speech recognition.'); $('callBtn').disabled = true; }
+showSeller();
+</script>
+</body>
+</html>
