@@ -25,20 +25,27 @@
   .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
   @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } .wrap { padding: 16px; } }
 
-  /* Call card: the orb shows the state at all times */
-  .call { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
-  .orb { flex: none; width: 84px; height: 84px; border-radius: 50%; border: 0; cursor: pointer; position: relative;
-         background: radial-gradient(circle at 32% 28%, #fff8, transparent 55%), var(--orb, #c9c9d3); transition: background-color .3s; }
-  .orb::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 2px solid var(--orb, transparent); opacity: 0; }
-  [data-state=listening] { --orb: var(--listen); } [data-state=thinking] { --orb: var(--think); } [data-state=speaking] { --orb: var(--speak); }
-  [data-state=listening] .orb::after { animation: ring 1.8s ease-out infinite; }
-  [data-state=thinking] .orb { animation: breathe 1s ease-in-out infinite; }
-  [data-state=speaking] .orb { animation: talk .5s ease-in-out infinite alternate; }
-  @keyframes ring { from { transform: scale(.9); opacity: .7; } to { transform: scale(1.3); opacity: 0; } }
-  @keyframes breathe { 50% { transform: scale(.92); opacity: .75; } }
-  @keyframes talk { from { transform: scale(.97); } to { transform: scale(1.05); } }
-  @media (prefers-reduced-motion: reduce) { .orb, .orb::after { animation: none !important; } }
-  .status { flex: 1; min-width: 200px; }
+  /* Call card: a revolving orb in the centre. Its speed and movement show the state, the label names it. */
+  .call { display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; padding: 14px 0 4px; }
+  .orb { flex: none; width: 148px; height: 148px; border-radius: 50%; border: 0; cursor: pointer; position: relative; overflow: hidden;
+         background: #0d0d18; box-shadow: 0 12px 44px rgba(79, 70, 229, .28); filter: saturate(.3); transition: filter .4s, box-shadow .4s; }
+  .orb::before { content: ""; position: absolute; inset: -25%; filter: blur(16px);
+         background: conic-gradient(from 0deg, #4f46e5, #06b6d4, #34d399, #ec4899, #8b5cf6, #4f46e5); animation: spin var(--spin, 18s) linear infinite; }
+  .orb::after { content: ""; position: absolute; inset: 0; border-radius: 50%;
+         background: radial-gradient(circle at 34% 28%, #ffffff66, transparent 42%), radial-gradient(circle, transparent 45%, #0d0d1880 100%); }
+  body:not([data-state=idle]) .orb { filter: none; }
+  [data-state=listening] .orb { --spin: 6s; animation: breathe 2.4s ease-in-out infinite; box-shadow: 0 12px 54px rgba(5, 150, 105, .4); }
+  [data-state=thinking] .orb { --spin: 1.4s; }
+  [data-state=speaking] .orb { --spin: 3.5s; animation: talk .45s ease-in-out infinite alternate; }
+  #stateLabel::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; vertical-align: middle; background: #c9c9d3; }
+  [data-state=listening] #stateLabel::before { background: var(--listen); }
+  [data-state=thinking] #stateLabel::before { background: var(--think); }
+  [data-state=speaking] #stateLabel::before { background: var(--speak); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes breathe { 50% { transform: scale(1.05); } }
+  @keyframes talk { from { transform: scale(.96); } to { transform: scale(1.07); } }
+  @media (prefers-reduced-motion: reduce) { .orb, .orb::before { animation: none !important; } }
+  .status { min-width: 200px; }
   #stateLabel { font-size: 24px; font-weight: 650; letter-spacing: -.02em; line-height: 1.2; }
   #hint { color: var(--muted); font-size: 14px; margin-top: 2px; }
   button.main { font: inherit; font-weight: 600; border: 0; border-radius: 12px; padding: 12px 22px; cursor: pointer; background: var(--ink); color: #fff; transition: transform .1s; }
@@ -46,7 +53,7 @@
   button.main:disabled { opacity: .4; cursor: not-allowed; }
   body:not([data-state=idle]) button.main { background: #fff; color: var(--bad); box-shadow: inset 0 0 0 1px var(--line); }
   button:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
-  #stage { list-style: none; display: flex; gap: 6px; flex-wrap: wrap; margin: 18px 0 0; padding: 0; }
+  #stage { list-style: none; display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; margin: 18px 0 0; padding: 0; }
   #stage li { font-size: 12px; padding: 4px 12px; border-radius: 99px; background: var(--soft); color: var(--muted); margin: 0; }
   #stage li.done { color: var(--ink); }
   #stage li.now { background: var(--brand); color: #fff; }
@@ -68,11 +75,14 @@
   .pill.flat { background: #e7e7ec; color: var(--muted); }
   ul { margin: 0; padding-left: 18px; } li { margin: 2px 0; }
   #assumptions { font-size: 14px; } #assumptions p { margin: 0 0 4px; }
+  #notes li.empty { list-style: none; margin-left: -18px; }
   #actions { list-style: none; padding: 0; }
   #actions li { display: flex; gap: 10px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--line); }
   #actions li:last-child { border-bottom: 0; }
   #actions .tick { color: var(--listen); font-weight: 700; }
   #actions .ref { margin-left: auto; font: 12px ui-monospace, Consolas, monospace; color: var(--muted); white-space: nowrap; }
+  #extra { width: 100%; min-height: 84px; resize: vertical; font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); color: var(--ink); }
+  .extraRow { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: var(--muted); }
   #summary h3 { font-size: 14px; margin: 12px 0 2px; } #summary h3:first-child { margin-top: 0; }
 </style>
 </head>
@@ -80,7 +90,7 @@
 <div class="wrap">
   <header>
     <h1><i></i> Virtual KAM <span>· seller voice assistant</span></h1>
-    <span class="tag">Demo with mock data · not a real Snapdeal system</span>
+    <span class="tag">Demo · mock data</span>
   </header>
 
   <section class="card">
@@ -98,6 +108,11 @@
     <div id="notice" role="alert"></div>
   </section>
 
+  <section class="card" style="margin-top:16px">
+    <h2>Seller account · <small id="storeName"></small> · <small>this month vs last month</small></h2>
+    <div id="metrics"></div>
+  </section>
+
   <div class="grid">
     <div class="col">
       <section class="card">
@@ -108,11 +123,11 @@
 
     <div class="col">
       <section class="card">
-        <h2>Seller account · <small id="storeName"></small> · <small>this month vs last month</small></h2>
-        <div id="metrics"></div>
+        <h2>Noted from the seller</h2>
+        <ul id="notes"><li class="empty">What the assistant learns and remembers during the call appears here.</li></ul>
       </section>
       <section class="card">
-        <h2>Actions taken by the KAM <small>(mock, nothing real is changed)</small></h2>
+        <h2>Actions taken and scheduled</h2>
         <ul id="actions"><li class="empty">Actions the seller agrees to are logged here.</li></ul>
       </section>
       <section class="card">
@@ -120,7 +135,12 @@
         <div id="summary"><div class="empty">Shown when the call ends.</div></div>
       </section>
       <section class="card">
-        <h2>Assumptions <small>(mock details I added, not in the brief)</small></h2>
+        <h2><label for="extra">Add account info</label> <small>(optional · the assistant will use it on the next reply)</small></h2>
+        <textarea id="extra" maxlength="1200" placeholder="Type or paste anything the assistant should know. Example: Return rate this month is 6%. Supplier lead time is 10 days."></textarea>
+        <div class="extraRow"><input type="file" id="extraFile" accept=".txt,.csv,.json,.md" aria-label="Upload a text, CSV or JSON file"><span>Text, CSV or JSON · first 1,200 characters are used</span></div>
+      </section>
+      <section class="card">
+        <h2>Assumptions</h2>
         <div id="assumptions"></div>
       </section>
     </div>
@@ -283,13 +303,15 @@ async function respond() {
   forgetHeard();
   let turn;
   try {
-    const r = await post({ type: 'chat', messages }, 15000);
+    const r = await post({ type: 'chat', messages, extra: $('extra').value }, 15000);
     if (!r.ok) throw new Error('chat ' + r.status);
     const { reply } = await r.json();
     try { turn = JSON.parse(reply); } catch { turn = { say: reply }; } // malformed JSON: just say the text
     if (!turn.say) throw new Error('empty reply');
+    // Guard: the model sometimes logs an action while still only offering it. Actions count only once it confirms them.
+    if (!['commit', 'summary'].includes(turn.stage)) turn.actions = [];
     // history keeps only what the model needs to remember (saves tokens against the per-minute limit)
-    messages.push({ role: 'assistant', content: JSON.stringify({ say: turn.say, stage: turn.stage, actions: turn.actions }) });
+    messages.push({ role: 'assistant', content: JSON.stringify({ say: turn.say, stage: turn.stage, actions: turn.actions, notes: turn.notes }) });
     failures = 0; notice('');
   } catch (e) {
     failures++;
@@ -306,6 +328,7 @@ async function respond() {
 
   addMessage('kam', turn.say);
   showStage(turn.stage);
+  (turn.notes || []).forEach(addNote);
   (turn.actions || []).forEach(logAction);
   if (turn.end_call && turn.summary) showSummary(turn.summary);
 
@@ -328,7 +351,8 @@ async function nudge() { // the seller has been silent for a while
 function startCall() {
   if (!SR) return;
   active = true; messages = [{ role: 'user', content: '[call connected]' }];
-  failures = 0; nudges = 0; naturalVoice = true; loggedActions.clear();
+  failures = 0; nudges = 0; naturalVoice = true; loggedActions.clear(); notesShown.clear();
+  $('notes').innerHTML = '<li class="empty">What the assistant learns and remembers during the call appears here.</li>';
   $('transcript').innerHTML = ''; showStage(); notice('');
   $('actions').innerHTML = '<li class="empty">Actions the seller agrees to are logged here.</li>';
   $('summary').innerHTML = '<div class="empty">Shown when the call ends.</div>';
@@ -361,6 +385,15 @@ function showInterim(text) { // live words while the seller is still talking
   d.textContent = text; $('transcript').scrollTop = 1e9;
 }
 
+const notesShown = new Set();
+function addNote(text) { // facts the model says it learned from the seller this turn
+  const key = String(text).trim().toLowerCase();
+  if (!key || notesShown.has(key)) return;
+  if (!notesShown.size) $('notes').innerHTML = '';
+  notesShown.add(key);
+  $('notes').insertAdjacentHTML('beforeend', `<li>${esc(text)}</li>`);
+}
+
 const ACTION_LABELS = {
   restock_list: 'Restock list created', low_stock_alerts: 'Low-stock alerts switched on',
   pause_listings: 'Zero-stock listings paused', dispatch_review: 'Dispatch review raised', follow_up: 'Follow-up call scheduled',
@@ -370,7 +403,7 @@ function logAction(a) {
   if (!ACTION_LABELS[a.type] || loggedActions.has(a.type)) return; // each action is logged once
   if (!loggedActions.size) $('actions').innerHTML = '';
   loggedActions.add(a.type);
-  const ref = 'MOCK-' + Math.floor(1000 + Math.random() * 9000);
+  const ref = 'REF-' + Math.floor(1000 + Math.random() * 9000);
   $('actions').insertAdjacentHTML('beforeend',
     `<li><span class="tick">✓</span><span><b>${ACTION_LABELS[a.type]}</b><br>${esc(a.detail)}</span><span class="ref">${ref}</span></li>`);
 }
@@ -405,6 +438,11 @@ async function showSeller() {
     notice('Could not load the seller data. If you are running this locally, start it with "vercel dev" instead of opening the file directly.');
   }
 }
+
+$('extraFile').onchange = async (e) => { // uploaded file -> text box, so the user can see exactly what is sent
+  const file = e.target.files[0];
+  if (file) $('extra').value = (await file.text()).slice(0, 1200);
+};
 
 // ---------- Boot ----------
 if (SR) setupEars();
