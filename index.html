@@ -38,7 +38,7 @@
     .layout { flex-direction: column; }
     .side { width: 100%; }
     .transcriptBox { min-height: 300px; }
-    header h1 span, .tag { display: none; }
+    header h1 span { display: none; }
     .stagePane { padding: 16px; }
   }
   header h1 { font-size: 16px; margin: 0; font-weight: 650; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
@@ -49,13 +49,13 @@
   /* Call card: a revolving orb in the centre. Its speed and movement show the state, the label names it. */
   .call { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; flex: none; }
   .orb { flex: none; width: 132px; height: 132px; border-radius: 50%; border: 0; cursor: pointer; position: relative; overflow: hidden;
-         background: #0d0d18; box-shadow: 0 12px 44px rgba(79, 70, 229, .28); filter: saturate(.3); transition: filter .4s, box-shadow .4s; }
+         background: #fff; box-shadow: 0 14px 50px rgba(236, 72, 153, .30), 0 6px 24px rgba(99, 102, 241, .25); transition: box-shadow .4s, transform .4s; }
   .orb::before { content: ""; position: absolute; inset: -25%; filter: blur(16px);
-         background: conic-gradient(from 0deg, #4f46e5, #06b6d4, #34d399, #ec4899, #8b5cf6, #4f46e5); animation: spin var(--spin, 18s) linear infinite; }
+         background: conic-gradient(from 0deg, #ff6ec7, #a78bfa, #60a5fa, #22d3ee, #5eead4, #fbbf24, #ff8fab, #ff6ec7); animation: spin var(--spin, 18s) linear infinite; }
   .orb::after { content: ""; position: absolute; inset: 0; border-radius: 50%;
-         background: radial-gradient(circle at 34% 28%, #ffffff66, transparent 42%), radial-gradient(circle, transparent 45%, #0d0d1880 100%); }
-  body:not([data-state=idle]) .orb { filter: none; }
-  [data-state=listening] .orb { --spin: 6s; animation: breathe 2.4s ease-in-out infinite; box-shadow: 0 12px 54px rgba(5, 150, 105, .4); }
+         background: radial-gradient(circle at 32% 26%, #ffffffcc, transparent 38%), radial-gradient(circle, transparent 55%, #ffffff40 100%); }
+  [data-state=idle] .orb { --spin: 14s; }
+  [data-state=listening] .orb { --spin: 6s; animation: breathe 2.4s ease-in-out infinite; box-shadow: 0 14px 60px rgba(45, 212, 191, .45), 0 6px 24px rgba(99, 102, 241, .3); }
   [data-state=thinking] .orb { --spin: 1.4s; }
   [data-state=speaking] .orb { --spin: 3.5s; animation: talk .45s ease-in-out infinite alternate; }
   #stateLabel::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; vertical-align: middle; background: #c9c9d3; }
@@ -112,7 +112,6 @@
   <header>
     <h1><i></i> Virtual KAM <span>· seller voice assistant</span></h1>
     <div class="headRight">
-      <span class="tag">Demo · mock data</span>
       <button class="toggle" id="sideToggle" aria-controls="side" aria-expanded="true">Hide panel</button>
     </div>
   </header>
